@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "trail_my_project": {
+      "command": "node",
+      "args": [
+        "/path/to/global/node_modules/@trailhq/trail-code/dist/bin/trail.js",
+        "mcp",
+        "/path/to/your/git-repository"
+      ],
+      "disabled": false
+    }
+  }
+}

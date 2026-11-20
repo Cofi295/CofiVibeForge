@@ -1,0 +1,15 @@
+{
+  "name": "cofi-vibe-forge",
+  "displayName": "Cofi Vibe Forge + Trail Graph (Unified Engineering Suite)",
+  "version": "2.0.0",
+  "description": "Unified Trail Code-Graph, Spec-Driven Straight-Line Scaffolding & Clean-Slate Debugging Suite: bundles Trail AST/SQLite MCP servers + institutional learnings alongside upfront file-tree blueprints, YAGNI straight-line coding, reproduction-first bug proof, clean-slate legacy code deletion, and AST/diff auditors in one unit.",
+  "author": "Cofi Engineering",
+  "homepage": "https://github.com/Cofi295/CofiVibeForge",
+  "repository": "https://github.com/Cofi295/CofiVibeForge",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Query Trail first, lock a straight-line project blueprint, and implement with zero speculative bloat",
+    "Use Trail + trail-clean-slate-debugger to pinpoint root cause, prove via reproduction test, delete broken old code, and audit",
+    "Sync CofiVibeForge + Trail Graph across Antigravity and CofiDocumentary and verify status"
+  ]
+}
