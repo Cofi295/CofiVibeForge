@@ -105,7 +105,7 @@ def _sync_manifest_to_dir(
 def _plugin_bundle_files(forge_root: Path) -> dict[str, bytes]:
     return _collect_manifest(
         forge_root,
-        allowed_top={"plugin.json", "mcp_config.json", "README.md", "assets", "rules", "skills"},
+        allowed_top={"plugin.json", "mcp_config.json", "install.py", "README.md", "assets", "rules", "skills", "scripts"},
     )
 
 

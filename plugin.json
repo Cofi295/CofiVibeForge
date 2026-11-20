@@ -1,7 +1,7 @@
 {
   "name": "cofi-vibe-forge",
-  "displayName": "Cofi Vibe Forge + Trail Graph (Unified Engineering Suite)",
-  "version": "2.0.0",
+  "displayName": "Cofi Vibe Forge + Auto-Trail Graph (Zero-Config Engineering Suite)",
+  "version": "2.1.0",
   "description": "Unified Trail Code-Graph, Spec-Driven Straight-Line Scaffolding & Clean-Slate Debugging Suite: bundles Trail AST/SQLite MCP servers + institutional learnings alongside upfront file-tree blueprints, YAGNI straight-line coding, reproduction-first bug proof, clean-slate legacy code deletion, and AST/diff auditors in one unit.",
   "author": "Cofi Engineering",
   "homepage": "https://github.com/Cofi295/CofiVibeForge",

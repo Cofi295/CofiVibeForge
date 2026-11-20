@@ -8,8 +8,9 @@ These laws govern project scaffolding, feature implementation, and debugging acr
 - **Strict YAGNI Ban**: NEVER invent unrequested config flags, unused optional parameters, single-call wrapper functions, single-method classes, or speculative "future-proof" fallback branches.
 - **No Drive-By Edits**: Touch only the files and symbols required by the task. Never reformat or refactor unrelated neighbors.
 
-## 2. Trail-First Surgical Localization (Zero Blind File Scanning)
-- When `.trail/` or a Trail MCP server (`trail`, `trail_remotion`, `trail_frames`, `cofitrail`) is present in the target workspace, ALWAYS query Trail (`ask` / `trail_find_code`, `callers` / `trail_trace_calls`, and `.trail/learnings/`) BEFORE grepping or reading source files broadly.
+## 2. Zero-Config Trail-First Surgical Localization (Works On ANY Code Folder Without Git)
+- Whenever touching ANY code file or folder, ALWAYS query Trail FIRST (`cofi_trail_auto` — or any dedicated repo Trail MCP server such as `trail`, `trail_remotion`, `trail_frames`) BEFORE grepping or reading whole files.
+- `cofi_trail_auto` works on ANY folder or standalone script even without `.git` or pre-registration (auto-builds the AST graph in `<0.3s` on first touch): pass `"dir": "<target_code_folder>"` (or an absolute `"file"` path in `trail_file_api`) whenever working in a subfolder or drive root.
 - Read only targeted line slices (`StartLine..EndLine`) around the identified symbols.
 
 ## 3. Clean-Slate Debugging & Self-Critique Law (Zero Band-Aid Stacking)

@@ -189,10 +189,10 @@ def test_clean_slate_audit_passes_clean_deletion_and_replacement() -> None:
 
 
 def test_sync_integrations_and_universal_installer_simulation(tmp_path: Path) -> None:
-    # Simulate a fresh GitHub clone WITHOUT mcp_config.json
+    # Simulate a fresh GitHub clone WITHOUT mcp_config.json and WITHOUT passing --project
     fresh_clone = tmp_path / "FreshClone"
     fresh_clone.mkdir()
-    for item in ("plugin.json", "README.md", "assets", "rules", "skills"):
+    for item in ("plugin.json", "install.py", "README.md", "assets", "rules", "skills", "scripts"):
         src = FORGE_ROOT / item
         dst = fresh_clone / item
         if src.is_dir():
@@ -201,23 +201,21 @@ def test_sync_integrations_and_universal_installer_simulation(tmp_path: Path) ->
             shutil.copy2(src, dst)
 
     fake_gemini = tmp_path / "gemini_cfg"
-    user_proj = tmp_path / "UserApp"
-    user_proj.mkdir()
-
     install_res = installer.run_installer(
         forge_root=fresh_clone,
-        projects=[str(user_proj)],
+        projects=[],
         gemini_config_dir=fake_gemini,
         auto_install_npm=False,
         node_bin_override="/usr/bin/node",
         trail_js_override="/usr/lib/node_modules/@trailhq/trail-code/dist/bin/trail.js",
     )
     assert install_res["installed"] is True
-    assert install_res["registered_mcp_servers"] == ["trail"]
+    assert install_res["registered_mcp_servers"] == ["cofi_trail_auto"]
     plugin_mcp = json.loads((fake_gemini / "plugins" / "cofi-vibe-forge" / "mcp_config.json").read_text(encoding="utf-8"))
     global_mcp = json.loads((fake_gemini / "mcp_config.json").read_text(encoding="utf-8"))
-    assert plugin_mcp["mcpServers"]["trail"]["args"][2] == str(user_proj.resolve())
-    assert global_mcp["mcpServers"]["trail"]["args"][2] == str(user_proj.resolve())
+    assert "cofi_trail_auto" in plugin_mcp["mcpServers"]
+    assert "cofi_trail_auto" in global_mcp["mcpServers"]
+    assert (fake_gemini / "plugins" / "cofi-vibe-forge" / "scripts" / "auto_trail_mcp.py").is_file()
 
     # Re-syncing fresh_clone must preserve generated plugin mcp_config.json
     fake_ws = tmp_path / "ws_agents"
@@ -251,3 +249,44 @@ def test_sync_integrations_and_universal_installer_simulation(tmp_path: Path) ->
     )
     assert status["antigravity_global_plugin_in_sync"] is True
     assert status["trail_mcp_servers_in_sync"] is True
+
+
+def test_auto_trail_mcp_live_on_plain_folder_without_git() -> None:
+    import tempfile
+
+    # Plain standalone directory outside any Git repo (ZERO .git, ZERO pre-built .trail/graft index!)
+    with tempfile.TemporaryDirectory() as raw_td:
+        plain_dir = Path(raw_td) / "standalone_code"
+        plain_dir.mkdir()
+        code_file = plain_dir / "calc.py"
+        code_file.write_text(
+            "def multiply_values(x: int, y: int) -> int:\n"
+            "    return x * y\n\n"
+            "def compute_area(w: int, h: int) -> int:\n"
+            "    return multiply_values(w, h)\n",
+            encoding="utf-8",
+        )
+
+        mcp_script = FORGE_ROOT / "scripts" / "auto_trail_mcp.py"
+        proc = subprocess.Popen(
+            [sys.executable, str(mcp_script)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+        )
+        requests = [
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}}},
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "trail_file_api", "arguments": {"file": str(code_file)}}},
+            {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "trail_trace_calls", "arguments": {"symbol": "multiply_values", "dir": str(plain_dir)}}},
+        ]
+        out, err = proc.communicate("\n".join(json.dumps(r) for r in requests) + "\n", timeout=15)
+        assert proc.returncode == 0, f"STDERR: {err}"
+        lines = [json.loads(ln) for ln in out.splitlines() if ln.strip()]
+        assert len(lines) == 3
+        skel_text = lines[1]["result"]["content"][0]["text"]
+        callers_text = lines[2]["result"]["content"][0]["text"]
+        assert "multiply_values" in skel_text and "compute_area" in skel_text
+        assert "compute_area" in callers_text
+

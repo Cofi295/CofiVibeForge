@@ -1,11 +1,9 @@
 {
   "mcpServers": {
-    "trail_my_project": {
-      "command": "node",
+    "cofi_trail_auto": {
+      "command": "python3",
       "args": [
-        "/path/to/global/node_modules/@trailhq/trail-code/dist/bin/trail.js",
-        "mcp",
-        "/path/to/your/git-repository"
+        "~/.gemini/config/plugins/cofi-vibe-forge/scripts/auto_trail_mcp.py"
       ],
       "disabled": false
     }

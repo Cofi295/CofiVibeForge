@@ -158,20 +158,24 @@ def run_installer(
     actions.append(runtime_note)
 
     raw_projects = list(projects or [])
-    if not raw_projects and gemini_config_dir is None:
-        cwd = Path.cwd().resolve()
-        if cwd != forge_root.resolve() and (cwd / ".git").exists():
-            raw_projects.append(str(cwd))
+    plugin_dir = cfg_dir / "plugins" / PLUGIN_DIR_NAME
+    auto_mcp_script = plugin_dir / "scripts" / "auto_trail_mcp.py"
+    registered_servers: dict[str, dict[str, Any]] = {
+        "cofi_trail_auto": {
+            "command": sys.executable,
+            "args": [str(auto_mcp_script)],
+            "disabled": False,
+        }
+    }
 
-    registered_servers: dict[str, dict[str, Any]] = {}
     if raw_projects and node_bin and trail_js:
         for idx, spec in enumerate(raw_projects):
             srv_name, proj_dir = _parse_project_spec(spec, idx, len(raw_projects))
             if not proj_dir.is_dir():
                 raise FileNotFoundError(f"Project directory does not exist: {proj_dir}")
-            if not dry_run and (proj_dir / ".git").exists() and Path(trail_js).is_file():
+            if not dry_run and Path(trail_js).is_file():
                 build_res = subprocess.run(
-                    [node_bin, trail_js, "build"],
+                    [node_bin, trail_js, "build", str(proj_dir)],
                     cwd=str(proj_dir),
                     capture_output=True,
                     text=True,
@@ -190,14 +194,14 @@ def run_installer(
                 "disabled": False,
             }
 
-        plugin_mcp = cfg_dir / "plugins" / PLUGIN_DIR_NAME / "mcp_config.json"
-        global_mcp = cfg_dir / "mcp_config.json"
-        actions.append(_merge_mcp_file(plugin_mcp, registered_servers, dry_run=dry_run))
-        actions.append(_merge_mcp_file(global_mcp, registered_servers, dry_run=dry_run))
+    plugin_mcp = plugin_dir / "mcp_config.json"
+    global_mcp = cfg_dir / "mcp_config.json"
+    actions.append(_merge_mcp_file(plugin_mcp, registered_servers, dry_run=dry_run))
+    actions.append(_merge_mcp_file(global_mcp, registered_servers, dry_run=dry_run))
 
     return {
         "installed": True,
-        "plugin_dir": str(cfg_dir / "plugins" / PLUGIN_DIR_NAME),
+        "plugin_dir": str(plugin_dir),
         "registered_mcp_servers": list(registered_servers.keys()),
         "dry_run": dry_run,
         "actions": actions,
@@ -225,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
-        print("CofiVibeForge v2.0.0 installed into Antigravity (auto-enabled on all sessions)!")
+        print("CofiVibeForge v2.1.0 installed into Antigravity (Zero-Config Auto-Trail enabled everywhere)!")
         print(f"  Plugin path : {result['plugin_dir']}")
         if result["registered_mcp_servers"]:
             print(f"  Trail MCP   : {', '.join(result['registered_mcp_servers'])}")
