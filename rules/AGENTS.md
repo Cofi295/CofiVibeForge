@@ -13,9 +13,11 @@ These laws govern project scaffolding, feature implementation, and debugging acr
 - `cofi_trail_auto` works on ANY folder or standalone script even without `.git` or pre-registration (auto-builds the AST graph in `<0.3s` on first touch): pass `"dir": "<target_code_folder>"` (or an absolute `"file"` path in `trail_file_api`) whenever working in a subfolder or drive root.
 - Read only targeted line slices (`StartLine..EndLine`) around the identified symbols.
 
-## 3. Clean-Slate Debugging & Self-Critique Law (Zero Band-Aid Stacking)
-When fixing any bug, regression, or contradiction, activate `trail-clean-slate-debugger` and obey this strict sequence:
+## 3. Clean-Slate Debugging, Contradiction Audit & Closed-Loop Verification Law
+When fixing any bug, regression, or contradiction, activate `trail-clean-slate-debugger` + `vibe-closed-loop-verifier` and obey this strict sequence:
 1. **Prove Bug Before Editing**: Run an isolated test or minimal reproducer command against the suspected code FIRST to confirm whether it actually fails or whether upstream data / conflicting logic is the real culprit. Never guess from static reading alone.
 2. **Delete Broken Old Code Cleanly**: Identify the exact broken or contradictory legacy lines and **DELETE/REPLACE them**. NEVER leave broken old code alive and stack new `if/else`, `try/except`, or override patches underneath to fight its output. Never leave commented-out zombie code.
-3. **Adversarial Self-Critique Before `edit_file`**: Critique your own proposed patch against callers/callees, hidden state conflicts, and line-count simplicity until the draft is contradiction-free, then apply it.
-4. **Test Loop + Diff Audit Until 100% Clean**: Re-run the reproducer test, sibling regression tests, and `clean_slate_audit.py` until green with zero orphan imports or band-aid bloat.
+3. **Adversarial Self-Critique & Producer–Consumer Symmetry Before `edit_file`**: Critique your proposed patch against callers/callees, Producer–Consumer contract parity (identical directory paths, JSON keys, cache version prefixes, and pass/fail thresholds between writer and critic without `monkeypatch` masking the boundary), and subprocess lifecycle cleanup (`.stop()` / `taskkill /T /F` in `finally:`).
+4. **Closed-Loop Live Verification & Signed Receipt (`vibe-closed-loop-verifier`)**:
+   - **ZERO Premature "Done" Claims**: NEVER report a bugfix or feature as complete after merely editing code or passing a mocked/synthetic 2-item unit test.
+   - **Autonomous `Test -> Break -> Fix -> Re-Verify` Loop**: Run `live_verify_loop.py` with `--check-contradictions`, `--pytest`, unmocked `--probe`, `--check-cp1252`, and `--verify-workspace` (plus `--forbid` when removing legacy rules). If ANY check fails (`FAILED_NEEDS_SELF_FIX`), immediately self-fix in the same turn and re-run until a signed **`VERIFIED_GREEN`** receipt is produced.

@@ -23,7 +23,7 @@ from typing import Any
 WIN_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 FORGE_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_DIR_NAME = "cofi-vibe-forge"
-SKILL_NAMES = ("trail", "vibe-straightline-architect", "trail-clean-slate-debugger")
+SKILL_NAMES = ("trail", "vibe-straightline-architect", "trail-clean-slate-debugger", "vibe-closed-loop-verifier")
 SKIP_NAMES = {"__pycache__", ".pytest_cache", ".pytest_tmp", ".git", ".DS_Store", "Thumbs.db"}
 
 
@@ -239,13 +239,13 @@ def sync_cofi_documentary(
     edit_md = doc_root / "agents" / "visual_cinema" / "edit.md"
     vox_md = doc_root / "agents" / "visual_cinema" / "vox.md"
     if debug_md.is_file():
-        actions.append(_bind_agent_frontmatter_skills(debug_md, ["trail-clean-slate-debugger"], dry_run=dry_run))
+        actions.append(_bind_agent_frontmatter_skills(debug_md, ["trail-clean-slate-debugger", "vibe-closed-loop-verifier"], dry_run=dry_run))
     for code_agent_md in (dev_md, edit_md, vox_md):
         if code_agent_md.is_file():
             actions.append(
                 _bind_agent_frontmatter_skills(
                     code_agent_md,
-                    ["vibe-straightline-architect", "trail-clean-slate-debugger"],
+                    ["vibe-straightline-architect", "trail-clean-slate-debugger", "vibe-closed-loop-verifier"],
                     dry_run=dry_run,
                 )
             )

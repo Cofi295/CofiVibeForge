@@ -130,15 +130,17 @@ def _find_node_and_trail() -> tuple[str | None, str | None]:
     if appdata:
         roots.append(Path(appdata) / "npm" / "node_modules")
     roots.extend([Path("/opt/homebrew/lib/node_modules"), Path("/usr/local/lib/node_modules"), Path.home() / ".npm-global" / "lib" / "node_modules"])
-    npm_bin = shutil.which("npm")
-    if npm_bin:
-        res = subprocess.run([npm_bin, "root", "-g"], capture_output=True, text=True, shell=(os.name == "nt"), creationflags=WIN_NO_WINDOW)
-        if res.returncode == 0 and res.stdout.strip():
-            roots.insert(0, Path(res.stdout.strip()))
     for rt in roots:
         entry = rt / "@trailhq" / "trail-code" / "dist" / "bin" / "trail.js"
         if entry.is_file():
             return str(Path(node_bin).resolve()), str(entry.resolve())
+    npm_bin = shutil.which("npm")
+    if npm_bin:
+        res = subprocess.run([npm_bin, "root", "-g"], capture_output=True, text=True, shell=(os.name == "nt"), creationflags=WIN_NO_WINDOW)
+        if res.returncode == 0 and res.stdout.strip():
+            entry = Path(res.stdout.strip()) / "@trailhq" / "trail-code" / "dist" / "bin" / "trail.js"
+            if entry.is_file():
+                return str(Path(node_bin).resolve()), str(entry.resolve())
     return str(Path(node_bin).resolve()), None
 
 
@@ -302,7 +304,13 @@ def _call_worker_tool(worker: _WarmWorker, tool_name: str, arguments: dict[str, 
 
 
 def serve_stdio() -> int:
-    node_bin, trail_js = _find_node_and_trail()
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        reconf = getattr(stream, "reconfigure", None)
+        if callable(reconf):
+            reconf(encoding="utf-8", errors="replace")
+    node_bin: str | None = None
+    trail_js: str | None = None
+    runtime_checked = False
     workspace_roots: list[Path] = []
     pool: OrderedDict[str, _WarmWorker] = OrderedDict()
 
@@ -346,6 +354,9 @@ def serve_stdio() -> int:
                 sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": msg_id, "result": {"tools": TOOLS_MANIFEST}}, ensure_ascii=False) + "\n")
                 sys.stdout.flush()
             elif method == "tools/call":
+                if not runtime_checked:
+                    node_bin, trail_js = _find_node_and_trail()
+                    runtime_checked = True
                 if not node_bin or not trail_js:
                     err_res = {
                         "content": [{"type": "text", "text": "Trail runtime missing; run: npm install -g @trailhq/trail-code"}],

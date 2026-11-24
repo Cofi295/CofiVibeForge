@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -27,6 +28,10 @@ clean_slate_audit = _load_module(
     "clean_slate_audit",
     FORGE_ROOT / "skills" / "trail-clean-slate-debugger" / "scripts" / "clean_slate_audit.py",
 )
+live_verify_loop = _load_module(
+    "live_verify_loop",
+    FORGE_ROOT / "skills" / "vibe-closed-loop-verifier" / "scripts" / "live_verify_loop.py",
+)
 sync_integrations = _load_module(
     "sync_integrations",
     FORGE_ROOT / "scripts" / "sync_integrations.py",
@@ -47,7 +52,7 @@ def test_plugin_manifest_and_skills_are_valid_and_lf_clean() -> None:
     mcp_example = json.loads((FORGE_ROOT / "mcp_config.example.json").read_text(encoding="utf-8"))
     assert "mcpServers" in mcp_example
 
-    for skill_slug in ("trail", "vibe-straightline-architect", "trail-clean-slate-debugger"):
+    for skill_slug in ("trail", "vibe-straightline-architect", "trail-clean-slate-debugger", "vibe-closed-loop-verifier"):
         skill_md = FORGE_ROOT / "skills" / skill_slug / "SKILL.md"
         raw = skill_md.read_bytes()
         assert b"\r" not in raw, f"CRLF detected in {skill_md}"
@@ -170,6 +175,104 @@ def test_clean_slate_audit_blocks_band_aid_zombie_and_swallowed_errors() -> None
     src_issues = clean_slate_audit.audit_python_source("service.py", orphan_py)
     assert [i["code"] for i in src_issues] == ["ORPHAN_IMPORT"]
 
+    drift_py = (
+        "import subprocess\nimport sys\n\n"
+        "def inspect_frames() -> dict:\n"
+        "    return {'ok': True, 'static_hold_warning': True}\n\n"
+        "def slice_clip() -> None:\n"
+        "    p = subprocess.Popen(['echo', 'hi'])\n"
+        "    fc = inspect_frames()\n"
+        "    if fc.get('frozen'):\n"
+        "        sys.stdout.write(str(p) + 'ensure_ascii=False')\n"
+    )
+    drift_issues = clean_slate_audit.audit_python_source("fetcher.py", drift_py)
+    drift_codes = {i["code"] for i in drift_issues}
+    assert "PRODUCER_CONSUMER_KEY_DRIFT" in drift_codes
+    assert "UNCLOSED_SUBPROCESS_POPEN" in drift_codes
+    assert "STDIO_UTF8_RECONFIGURE_MISSING" in drift_codes
+
+    mock_test_py = (
+        "def test_pipeline(monkeypatch):\n"
+        "    monkeypatch.setattr('documentary.critic_loops.audit_footage_hygiene', lambda w, j: {'status': 'PASSED'})\n"
+    )
+    mock_issues = clean_slate_audit.audit_python_source("tests/test_edit.py", mock_test_py)
+    assert {i["code"] for i in mock_issues} == {"MOCK_MASKED_CRITIC_GATE"}
+
+    receipt = live_verify_loop.run_verification_suite(
+        FORGE_ROOT,
+        files=["install.py"],
+        probes=[f'"{sys.executable}" -c "print(123)"'],
+        check_cp1252=True,
+        check_contradictions=True,
+    )
+    assert receipt["verdict"] == "VERIFIED_GREEN"
+    assert receipt["passed"] is True
+    assert len(receipt["receipt_id"]) == 16
+    assert receipt["contradictions"]["enabled"] is True
+    assert receipt["contradictions"]["passed"] is True
+    assert len(receipt["probes"]) == 2
+
+
+def test_producer_consumer_ast_no_false_positives_on_dynamic_or_local_dict_returns() -> None:
+    # Early error literal + dynamic main return variable MUST NOT trigger false-positive drift
+    dynamic_src = (
+        "def _probe(path: str) -> dict:\n"
+        "    return dict(ok=True, dhash='abc', corner_logo_detected=False)\n\n"
+        "def inspect_frames(path: str) -> dict:\n"
+        "    if not path:\n"
+        "        return {'ok': False, 'reason': 'missing'}\n"
+        "    info = _probe(path)\n"
+        "    return info\n\n"
+        "def audit(path: str) -> bool:\n"
+        "    res = inspect_frames(path)\n"
+        "    return bool(res.get('corner_logo_detected') or res.get('dhash'))\n"
+    )
+    assert clean_slate_audit.audit_python_source("critic.py", dynamic_src) == []
+
+    # Static local dict built via AnnAssign + subscript catches genuine key typo without false positives
+    local_static_src = (
+        "def build_report(ok: bool) -> dict:\n"
+        "    if not ok:\n"
+        "        return {'ok': False, 'reason': 'bad'}\n"
+        "    rep: dict = {'ok': True}\n"
+        "    rep['score'] = 99\n"
+        "    return rep\n\n"
+        "def read_report() -> tuple:\n"
+        "    r = build_report(True)\n"
+        "    return (r.get('score'), r.get('nonexistent_key'))\n"
+    )
+    issues = clean_slate_audit.audit_python_source("report.py", local_static_src)
+    assert [i["code"] for i in issues] == ["PRODUCER_CONSUMER_KEY_DRIFT"]
+    assert "nonexistent_key" in issues[0]["message"]
+
+
+def test_live_verify_loop_contradictions_forbid_and_signed_receipt(tmp_path: Path) -> None:
+    (tmp_path / "a.py").write_text(
+        "MIN_FOOTAGE_FLOOR = 0.50\n"
+        "MIN_FOOTAGE_FLOOR = 0.0\n\n"
+        "def compute(x: int) -> int:\n"
+        "    return x + 1\n"
+        "    dead = x + 2\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "b.py").write_text("MIN_FOOTAGE_FLOOR = 0.25\n", encoding="utf-8")
+
+    receipt_md = tmp_path / "receipt.md"
+    rc = live_verify_loop.main([
+        "--repo", str(tmp_path),
+        "--files", "a.py", "b.py",
+        "--check-contradictions",
+        "--forbid", r"MIN_FOOTAGE_FLOOR\s*=\s*0\.50",
+        "--receipt-out", str(receipt_md),
+    ])
+    assert rc == 1
+    md_text = receipt_md.read_text(encoding="utf-8")
+    assert "FAILED_NEEDS_SELF_FIX" in md_text
+    assert "DUPLICATE_SYMBOL_DEFINITION" in md_text
+    assert "UNREACHABLE_CODE_AFTER_RETURN" in md_text
+    assert "FORBIDDEN_LEGACY_PATTERN" in md_text
+    assert "CROSS_FILE_CONSTANT_DRIFT" in md_text
+
 
 def test_clean_slate_audit_passes_clean_deletion_and_replacement() -> None:
     clean_diff = (
@@ -268,6 +371,7 @@ def test_auto_trail_mcp_live_on_plain_folder_without_git() -> None:
         )
 
         mcp_script = FORGE_ROOT / "scripts" / "auto_trail_mcp.py"
+        env = dict(os.environ, PYTHONIOENCODING="cp1252")
         proc = subprocess.Popen(
             [sys.executable, str(mcp_script)],
             stdin=subprocess.PIPE,
@@ -275,6 +379,7 @@ def test_auto_trail_mcp_live_on_plain_folder_without_git() -> None:
             stderr=subprocess.PIPE,
             text=True,
             encoding="utf-8",
+            env=env,
         )
         requests = [
             {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}}},

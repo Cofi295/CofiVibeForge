@@ -44,17 +44,20 @@ Draft the exact replacement code mentally/in scratch and run a ruthless 4-point 
 2. **Zero-Contradiction Check**: After deleting the broken lines in Gate 3, is there any sibling branch, cache, or fallback left in the file/module that contradicts the new logic?
 3. **Straight-Line Compression Check**: Is the new code a single clear linear flow without speculative parameters, redundant guards, or single-use helpers?
 4. **Edge-Case Check**: How does the draft behave on empty, boundary, or malformed inputs (fail fast vs silent corruption)?
-*If ANY check fails -> revise the draft before touching the file. Repeat until all 4 pass.*
+5. **Producer–Consumer Contract Symmetry Check (Zero Mock-Masked Drift)**: Do the producer function (writer/fetcher/renderer) and consumer function (critic/auditor/coordinator) share identical directory paths, JSON keys, cache version prefixes, and pass/fail thresholds without `monkeypatch` hiding a mismatch?
+6. **Subprocess & Session Lifecycle Cleanup Check**: Does every spawned worker process or persistent CLI session (`subprocess.Popen` / `GoalSession`) deterministically terminate its process tree (`.stop()` / `taskkill /T /F`) in a `finally:` block when the turn finishes?
+*If ANY check fails -> revise the draft before touching the file. Repeat until all 6 pass.*
 
-### Gate 5 — Surgical Edit, Regression Test Loop & Clean-Slate Diff Audit
+### Gate 5 — Surgical Edit, Real-Workspace Scale Replay & Clean-Slate Diff Audit
 1. Apply the clean replacement (`edit_file`) — deleting the broken legacy lines cleanly.
 2. Re-run the Gate 2 reproduction test: confirm deterministic **RED -> GREEN** transition.
 3. Run the broader module/regression test suite (`pytest` / `npm test`) until **100% green** (if a test fails, return to Gate 2/4 — never weaken assertions to force green).
-4. Run the automated Clean-Slate Diff Auditor before declaring completion:
+4. **Mandatory Real-Workspace Scale Replay**: When fixing pipeline/critic/media gates, never rely solely on 2-clip synthetic unit tests or mocked critics — run the unmocked critic directly against a real multi-act workspace (`100+` beats) with the full job config (`--verify-workspace <workspace_path>`).
+5. Run the automated Clean-Slate Diff Auditor before declaring completion:
    ```bash
-   python ~/.gemini/config/plugins/cofi-vibe-forge/skills/trail-clean-slate-debugger/scripts/clean_slate_audit.py --repo <repo_root> --mode bugfix
+   python ~/.gemini/config/plugins/cofi-vibe-forge/skills/trail-clean-slate-debugger/scripts/clean_slate_audit.py --repo <repo_root> --mode bugfix --verify-workspace <optional_real_workspace>
    ```
-   Resolve any `SWALLOWED_EXCEPTION`, `COMMENTED_ZOMBIE_CODE`, `ORPHAN_IMPORT`, `BAND_AID_STACKING_SUSPECT`, or `SYNTAX_ERROR` findings immediately.
+   Resolve any `SWALLOWED_EXCEPTION`, `COMMENTED_ZOMBIE_CODE`, `ORPHAN_IMPORT`, `BAND_AID_STACKING_SUSPECT`, `UNCLOSED_SUBPROCESS_POPEN`, `REAL_WORKSPACE_CONTRACT_FAILURE`, or `SYNTAX_ERROR` findings immediately.
 
 ### Gate 6 — Record Institutional Memory (`trail note` / `trail check`)
 - If `.trail/` is active in the repository:
